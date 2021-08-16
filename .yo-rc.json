@@ -41,6 +41,7 @@
     "clientTheme": "none",
     "clientThemeVariant": "",
     "withAdminUi": true,
-    "languages": ["en", "fr"]
+    "languages": ["en", "fr"],
+    "entities": ["Tracking", "ParamEndPoint", "ParamGeneral"]
   }
 }
