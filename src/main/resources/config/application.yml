@@ -182,3 +182,4 @@ jhipster:
 # application:
 application:
   timeOut: 20000
+  pays: TG

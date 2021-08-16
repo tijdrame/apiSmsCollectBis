@@ -1,5 +1,6 @@
 package com.boa.api.service;
 
+import com.boa.api.config.ApplicationProperties;
 import com.boa.api.domain.ParamEndPoint;
 import com.boa.api.domain.ParamGeneral;
 import com.boa.api.domain.Tracking;
@@ -47,6 +48,7 @@ public class ApiService {
     private final Utils utils;
     private final ParamEndPointService endPointService;
     private final ParamGeneralService paramGeneralService;
+    private final ApplicationProperties applicationProperties;
     private final Logger log = LoggerFactory.getLogger(ApiService.class);
 
     // private static File file;
@@ -102,7 +104,7 @@ public class ApiService {
                     .put("id_dossier", "")
                     .put("exploitant", "")
                     .put("nbr_relance", 30)
-                    .put("pays", "TG")
+                    .put("pays", applicationProperties.getPays())
                     .put("statut", 1)
                     .put("canal_envoi", "SMS")
                     .put("type_notif", "ALERTE")

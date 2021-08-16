@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ApplicationProperties {
 
     private Integer timeOut;
+    private String pays;
 
     public Integer getTimeOut() {
         return this.timeOut;
@@ -19,5 +20,13 @@ public class ApplicationProperties {
 
     public void setTimeOut(Integer timeOut) {
         this.timeOut = timeOut;
+    }
+
+    public String getPays() {
+        return this.pays;
+    }
+
+    public void setPays(String pays) {
+        this.pays = pays;
     }
 }
