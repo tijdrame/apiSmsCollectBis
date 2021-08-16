@@ -195,7 +195,20 @@ public class ApiService {
                 FileUtils.cleanDirectory(new File(paramGen.get().getVarString1()));
             }
         } catch (Exception e) {
-            // TODO: handle exception
+            GenericResponse genericResp = new GenericResponse();
+            genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
+            genericResp.setDateResponse(Instant.now());
+            genericResp.setDescription(ICodeDescResponse.ECHEC_DESCRIPTION + " " + e.getMessage());
+            tracking =
+                createTracking(
+                    tracking,
+                    ICodeDescResponse.ECHEC_CODE,
+                    "smsCollect",
+                    genericResp.toString(),
+                    "CRON",
+                    genericResp.getResponseReference()
+                );
+            trackingService.save(tracking);
         }
     }
 
