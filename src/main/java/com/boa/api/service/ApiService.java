@@ -7,28 +7,19 @@ import com.boa.api.domain.Tracking;
 import com.boa.api.response.GenericResponse;
 import com.boa.api.service.utils.ICodeDescResponse;
 import com.boa.api.service.utils.Utils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 //import io.swagger.models.Path;
 //import io.swagger.v3.oas.models.Paths;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.java.Log;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -44,14 +35,12 @@ import org.springframework.util.FileSystemUtils;
 public class ApiService {
 
     private final TrackingService trackingService;
-    private final UserService userService;
+    // private final UserService userService;
     private final Utils utils;
     private final ParamEndPointService endPointService;
     private final ParamGeneralService paramGeneralService;
     private final ApplicationProperties applicationProperties;
     private final Logger log = LoggerFactory.getLogger(ApiService.class);
-
-    // private static File file;
 
     @Scheduled(fixedDelayString = "PT5M")
     public void smsProcessing() {
@@ -97,6 +86,20 @@ public class ApiService {
                 iTracking.dateRequest(Instant.now());
                 GenericResponse genericResp = new GenericResponse();
                 List<String> oneLineOfMsg = getLineofMsg(it);
+                if (oneLineOfMsg == null || oneLineOfMsg.isEmpty()) {
+                    tracking =
+                        createTracking(
+                            tracking,
+                            ICodeDescResponse.ECHEC_CODE,
+                            "smsProcessing",
+                            "Format de fichier incorrect a la ligne = " + it,
+                            "CRON du " + Instant.now(),
+                            ""
+                        );
+                    trackingService.save(tracking);
+                    log.error("Format de fichier incorrect");
+                    continue;
+                }
                 String jsonStr = new JSONObject()
                     .put("receivers", oneLineOfMsg.get(2))
                     .put("sms_message", oneLineOfMsg.get(1))
@@ -125,14 +128,10 @@ public class ApiService {
                         result += ligne;
                         ligne = br.readLine();
                     }
-                    // result = IOUtils.toString(conn.getInputStream(), "UTF-8");
-                    log.info("oAuth result ===== [{}]", result);
+                    log.info("smsProcessing result ===== [{}]", result);
                     obj = new JSONObject(result);
                     obj = obj.getJSONObject("wfcredit_sla").getJSONObject("response");
                     log.info("ob to str =[{}]", obj.toString());
-                    // ObjectMapper mapper = new ObjectMapper();
-                    // Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
-                    // genericResp.setDataOauth(map);
                     if (obj.toString() != null && !obj.isNull("code_retour") && obj.get("code_retour").equals("0100")) {
                         genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
                         genericResp.setDescription(obj.getString("message_retour"));
@@ -169,12 +168,7 @@ public class ApiService {
                     }
                     log.info("resp envoi error ===== [{}]", result);
                     obj = new JSONObject(result);
-                    /*
-                     * ObjectMapper mapper = new ObjectMapper(); Map<String, Object> map =
-                     * mapper.readValue(result, Map.class);
-                     */
                     obj = new JSONObject(result);
-                    // genericResp.setData(map);
                     genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
                     genericResp.setDateResponse(Instant.now());
                     genericResp.setDescription(ICodeDescResponse.ECHEC_DESCRIPTION);
@@ -215,11 +209,20 @@ public class ApiService {
     private static List<String> getLineofMsg(String src) {
         List<String> result = new ArrayList<>();
         src = src.substring(2);
-        String[] tab = src.split(";;");
-        String[] msg = tab[1].split(";");
-        result.add(tab[0]); // date
-        result.add(msg[0]); // msg
-        result.add(msg[1]); // tel
+        String[] tab = null;
+        String[] msg = null;
+        if (src != null) {
+            tab = src.split(";;");
+            if (tab != null && tab.length == 2) {
+                msg = tab[1].split(";");
+                result.add(tab[0]); // date
+                if (msg != null && msg.length == 2) {
+                    result.add(msg[0]); // msg
+                    result.add(msg[1]); // tel
+                } else return null;
+            } else return null;
+        } else return null;
+
         return result;
     }
 
@@ -238,20 +241,15 @@ public class ApiService {
     public static List<String> readFilesForFolder(final File folder) throws IOException {
         List<String> list = new ArrayList<>();
         for (final File fileEntry : folder.listFiles()) {
-            // System.out.println("1 "+folder.listFiles()[1]);
             if (fileEntry.isDirectory()) {
                 readFilesForFolder(fileEntry);
             } else {
-                // System.out.println("fileEntry " + fileEntry.getName());
                 BufferedReader br = new BufferedReader(new FileReader(fileEntry));
                 String st = "";
                 while ((st = br.readLine()) != null) {
-                    // System.out.println("file reading " + st);
                     list.add(st);
                 }
                 br.close();
-                // System.out.println("END reading ********************");
-                // return list;
             }
         }
         return list;
