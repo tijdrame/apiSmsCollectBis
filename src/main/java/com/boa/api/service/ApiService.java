@@ -13,10 +13,18 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 //import io.swagger.models.Path;
 //import io.swagger.v3.oas.models.Paths;
 import lombok.RequiredArgsConstructor;
@@ -50,15 +58,8 @@ public class ApiService {
         try {
             Optional<ParamEndPoint> endPoint = endPointService.findByCodeParam("smsCollect");
             if (!endPoint.isPresent()) {
-                tracking =
-                    createTracking(
-                        tracking,
-                        ICodeDescResponse.ECHEC_CODE,
-                        "smsProcessing",
-                        "End point non paramétré",
-                        "CRON du " + Instant.now(),
-                        ""
-                    );
+                tracking = createTracking(tracking, ICodeDescResponse.ECHEC_CODE, "smsProcessing",
+                        "End point non paramétré", "CRON du " + Instant.now(), "");
                 trackingService.save(tracking);
                 log.error("End point smsCollect non paramétré");
                 return;
@@ -66,15 +67,8 @@ public class ApiService {
 
             Optional<ParamGeneral> paramGen = paramGeneralService.findByCode("smsCollect");
             if (!endPoint.isPresent()) {
-                tracking =
-                    createTracking(
-                        tracking,
-                        ICodeDescResponse.ECHEC_CODE,
-                        "smsProcessing",
-                        "Repertoire non paramétré",
-                        "CRON du " + Instant.now(),
-                        ""
-                    );
+                tracking = createTracking(tracking, ICodeDescResponse.ECHEC_CODE, "smsProcessing",
+                        "Repertoire non paramétré", "CRON du " + Instant.now(), "");
                 trackingService.save(tracking);
                 log.error("Repertoire smsCollect non paramétré");
                 return;
@@ -87,36 +81,20 @@ public class ApiService {
                 GenericResponse genericResp = new GenericResponse();
                 List<String> oneLineOfMsg = getLineofMsg(it);
                 if (oneLineOfMsg == null || oneLineOfMsg.isEmpty()) {
-                    tracking =
-                        createTracking(
-                            tracking,
-                            ICodeDescResponse.ECHEC_CODE,
-                            "smsProcessing",
-                            "Format de fichier incorrect a la ligne = " + it,
-                            "CRON du " + Instant.now(),
-                            ""
-                        );
+                    tracking = createTracking(tracking, ICodeDescResponse.ECHEC_CODE, "smsProcessing",
+                            "Format de fichier incorrect a la ligne = " + it, "CRON du " + Instant.now(), "");
                     trackingService.save(tracking);
                     log.error("Format de fichier incorrect");
                     continue;
                 }
-                String jsonStr = new JSONObject()
-                    .put("receivers", oneLineOfMsg.get(2))
-                    .put("sms_message", oneLineOfMsg.get(1))
-                    .put("id_msg", "")
-                    .put("id_dossier", "")
-                    .put("exploitant", "")
-                    .put("nbr_relance", 30)
-                    .put("pays", applicationProperties.getPays())
-                    .put("statut", 1)
-                    .put("canal_envoi", "SMS")
-                    .put("type_notif", "ALERTE")
-                    .put("email_receivers", "")
-                    .put("compteur_relance", 0)
-                    .put("titre_msg", "NOTIFICATION RAPPEL DIRECTEUR AGENCE")
-                    .put("email_message", "")
-                    .toString();
-                HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json", null, null);
+                String jsonStr = new JSONObject().put("receivers", oneLineOfMsg.get(2))
+                        .put("sms_message", oneLineOfMsg.get(1)).put("id_msg", "").put("id_dossier", "")
+                        .put("exploitant", "").put("nbr_relance", 30).put("pays", applicationProperties.getPays())
+                        .put("statut", 1).put("canal_envoi", "SMS").put("type_notif", "ALERTE")
+                        .put("email_receivers", "").put("compteur_relance", 0)
+                        .put("titre_msg", "NOTIFICATION RAPPEL DIRECTEUR AGENCE").put("email_message", "").toString();
+                HttpURLConnection conn = utils.doConnexion(endPoint.get().getEndPoints(), jsonStr, "application/json",
+                        null, null);
                 BufferedReader br = null;
                 JSONObject obj = new JSONObject();
                 String result = "";
@@ -136,28 +114,16 @@ public class ApiService {
                         genericResp.setCode(ICodeDescResponse.SUCCES_CODE);
                         genericResp.setDescription(obj.getString("message_retour"));
                         genericResp.setDateResponse(Instant.now());
-                        iTracking =
-                            createTracking(
-                                iTracking,
-                                ICodeDescResponse.SUCCES_CODE,
-                                endPoint.get().getEndPoints(),
-                                genericResp.toString(),
-                                jsonStr,
-                                genericResp.getResponseReference()
-                            );
+                        iTracking = createTracking(iTracking, ICodeDescResponse.SUCCES_CODE,
+                                endPoint.get().getEndPoints(), genericResp.toString(), jsonStr,
+                                genericResp.getResponseReference());
                     } else {
                         genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
                         genericResp.setDateResponse(Instant.now());
                         genericResp.setDescription(obj.getString("message_retour"));
-                        iTracking =
-                            createTracking(
-                                iTracking,
-                                ICodeDescResponse.ECHEC_CODE,
-                                endPoint.get().getEndPoints(),
-                                genericResp.toString(),
-                                jsonStr,
-                                genericResp.getResponseReference()
-                            );
+                        iTracking = createTracking(iTracking, ICodeDescResponse.ECHEC_CODE,
+                                endPoint.get().getEndPoints(), genericResp.toString(), jsonStr,
+                                genericResp.getResponseReference());
                     }
                 } else {
                     br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
@@ -172,20 +138,14 @@ public class ApiService {
                     genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
                     genericResp.setDateResponse(Instant.now());
                     genericResp.setDescription(ICodeDescResponse.ECHEC_DESCRIPTION);
-                    iTracking =
-                        createTracking(
-                            iTracking,
-                            ICodeDescResponse.ECHEC_CODE,
-                            endPoint.get().getEndPoints(),
-                            genericResp.toString(),
-                            jsonStr,
-                            genericResp.getResponseReference()
-                        );
+                    iTracking = createTracking(iTracking, ICodeDescResponse.ECHEC_CODE, endPoint.get().getEndPoints(),
+                            genericResp.toString(), jsonStr, genericResp.getResponseReference());
                 }
                 trackingService.save(iTracking);
             }
             if (!fileRead.isEmpty()) {
-                FileSystemUtils.copyRecursively(new File(paramGen.get().getVarString1()), new File(paramGen.get().getVarString2()));
+                FileSystemUtils.copyRecursively(new File(paramGen.get().getVarString1()),
+                        new File(paramGen.get().getVarString2()));
                 FileUtils.cleanDirectory(new File(paramGen.get().getVarString1()));
             }
         } catch (Exception e) {
@@ -193,15 +153,8 @@ public class ApiService {
             genericResp.setCode(ICodeDescResponse.ECHEC_CODE);
             genericResp.setDateResponse(Instant.now());
             genericResp.setDescription(ICodeDescResponse.ECHEC_DESCRIPTION + " " + e.getMessage());
-            tracking =
-                createTracking(
-                    tracking,
-                    ICodeDescResponse.ECHEC_CODE,
-                    "smsCollect",
-                    genericResp.toString(),
-                    "CRON",
-                    genericResp.getResponseReference()
-                );
+            tracking = createTracking(tracking, ICodeDescResponse.ECHEC_CODE, "smsCollect", genericResp.toString(),
+                    "CRON", genericResp.getResponseReference());
             trackingService.save(tracking);
         }
     }
@@ -219,14 +172,18 @@ public class ApiService {
                 if (msg != null && msg.length == 2) {
                     result.add(msg[0]); // msg
                     result.add(msg[1]); // tel
-                } else return null;
-            } else return null;
-        } else return null;
+                } else
+                    return null;
+            } else
+                return null;
+        } else
+            return null;
 
         return result;
     }
 
-    public Tracking createTracking(Tracking tracking, String code, String endPoint, String result, String req, String reqId) {
+    public Tracking createTracking(Tracking tracking, String code, String endPoint, String result, String req,
+            String reqId) {
         tracking.setRequestId(reqId);
         tracking.setCodeResponse(code);
         tracking.setDateResponse(Instant.now());
@@ -255,20 +212,86 @@ public class ApiService {
         return list;
     }
 
+    public List<String> testFilesWalk() {
+        Path path = Paths.get("C:\\Program Files\\Java\\jdk1.8.0_201");
+        List<String> result = new ArrayList<>();
+        try (Stream<Path> subPaths = Files.walk(path, 1)) {// le 1 est optionnel; s'il manque il lit les sous repertoires aussi
+            /*
+             * subPaths //.forEach(a -> System.out.println(a));
+             * .filter(Files::isRegularFile)//sans les dossiers
+             * .forEach(System.out::println); // affiche tous les fichiers
+             */
+            List<String> subPathList = subPaths.filter(Files::isRegularFile).map(Objects::toString)
+                    .collect(Collectors.toList());
+            int i = 1;
+            for (String it : subPathList) {
+                result.add(i + "e Fichier ***************************************");
+                if (it.contains("txt")) {
+                    File f = new File(it);
+                    BufferedReader br = new BufferedReader(new FileReader(f));
+                    String st = "";
+                    while ((st = br.readLine()) != null) {
+                        result.add(st);
+                    }
+                    br.close();
+                }
+
+                i += 1;
+                // System.out.println(it);
+            }
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+        return result;
+    }
+
     public static void main(String[] args) throws IOException {
         /*
          * final File folder = new File("D:\\src\\smsCollect\\repertoireDepot");
          * List<String> st = readFilesForFolder(folder);
          * System.out.println("result = "+st.size());
          */
-        String test =
-            ";;17/06/2021;;BOA SENEGAL : Votre compte bancaire enregistre des impayes. Merci de le provisionner ou passer a votre a agence pour regler ce probleme.;221777092077";
-        test = test.substring(2);
-        String[] tab = test.split(";;");
-        String[] msg = tab[1].split(";");
+        /*
+         * String test =
+         * ";;17/06/2021;;BOA SENEGAL : Votre compte bancaire enregistre des impayes. Merci de le provisionner ou passer a votre a agence pour regler ce probleme.;221777092077"
+         * ; test = test.substring(2); String[] tab = test.split(";;"); String[] msg =
+         * tab[1].split(";");
+         * 
+         * System.out.println("result = " + tab[0] + tab.length);
+         * System.out.println("msg = " + msg[0]); System.out.println("tel = " + msg[1]);
+         */
+        Path path = Paths.get("C:\\Program Files\\Java\\jdk1.8.0_201");
+        List<String> result = new ArrayList<>();
+        try (Stream<Path> subPaths = Files.walk(path, 1)) {// le 1 est optionnel; s'il manque il lit les sous
+                                                           // repertoires aussi
+            /*
+             * subPaths //.forEach(a -> System.out.println(a));
+             * .filter(Files::isRegularFile)//sans les dossiers
+             * .forEach(System.out::println); // affiche tous les fichiers
+             */
+            List<String> subPathList = subPaths.filter(Files::isRegularFile).map(Objects::toString)
+                    .collect(Collectors.toList());
+            int i = 1;
+            for (String it : subPathList) {
+                result.add(i + "e Fichier ***************************************");
+                if (it.contains("txt")) {
+                    File f = new File(it);
+                    BufferedReader br = new BufferedReader(new FileReader(f));
+                    String st = "";
+                    while ((st = br.readLine()) != null) {
+                        result.add(st);
+                    }
+                    br.close();
+                }
 
-        System.out.println("result = " + tab[0] + tab.length);
-        System.out.println("msg = " + msg[0]);
-        System.out.println("tel = " + msg[1]);
+                i += 1;
+                // System.out.println(it);
+            }
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+        for (String it : result) {
+            System.out.println(it);
+        }
     }
 }
